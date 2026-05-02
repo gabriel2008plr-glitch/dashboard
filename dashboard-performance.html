@@ -70,7 +70,7 @@
   .day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:5px;margin-bottom:14px}
   .day-cell{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color .15s}
   .day-cell:hover{border-color:var(--border3)}
-  .day-cell.weekend{opacity:.38}
+  .day-cell.weekend{opacity:.7}
   .day-cell.future{opacity:.28}
   .day-date{font-size:10px;color:var(--text4);letter-spacing:.02em}
   .day-val{font-size:11px;font-weight:500;color:var(--purple);font-family:'DM Mono',monospace}
@@ -371,15 +371,47 @@ function render() {
   document.getElementById('c-dias-sub').textContent = `${Math.round(bdD/Math.max(bdN,1)*100)}% do mês`;
 
   const al = document.getElementById('alert-box');
-  if (diff >= 10) {
-    al.style.cssText = 'background:#0a2010;border:1px solid #1a5020;border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;color:#3ab870;display:flex;align-items:center;gap:8px';
-    al.textContent = `Excelente! Acima do ritmo em ${diff.toFixed(0)}% — continue assim!`;
-  } else if (diff >= 0) {
-    al.style.cssText = 'background:#171300;border:1px solid #3a2e00;border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;color:#c09820;display:flex;align-items:center;gap:8px';
-    al.textContent = `No ritmo esperado (+${diff.toFixed(0)}% em relação ao ideal de ${BRL(meta)}). Mantenha a consistência.`;
+  const topbar = document.querySelector('.topbar');
+  const cardsEl = document.querySelector('.cards');
+
+  if (pct >= 100) {
+    const over = (pct - 100).toFixed(1);
+    al.style.cssText = 'background:linear-gradient(90deg,#2a0828,#1a0830);border:1px solid #c060c0;border-radius:7px;padding:10px 16px;margin-bottom:14px;font-size:12px;color:#f0a0f8;display:flex;align-items:center;gap:8px;font-weight:500;letter-spacing:.02em';
+    al.innerHTML = `🎉 META BATIDA! Você está <b style="color:#ff80ff">${over}% acima da meta</b> — parabéns, continue voando!`;
+    topbar.style.background = 'linear-gradient(90deg,#1a0828 0%,#0e1022 40%,#1a0828 100%)';
+    topbar.style.borderBottom = '1px solid #8030a0';
+    topbar.style.boxShadow = '0 2px 24px 0 rgba(200,80,220,.18)';
+    cardsEl.style.filter = 'drop-shadow(0 0 12px rgba(200,80,255,.13))';
+    let overlay = document.getElementById('meta-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'meta-overlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#c060e0,#f080f8,#9040c0,#f080f8,#c060e0);background-size:200% 100%;animation:shimmer 2.5s linear infinite;z-index:999;pointer-events:none';
+      document.body.prepend(overlay);
+      if (!document.getElementById('shimmer-style')) {
+        const st = document.createElement('style');
+        st.id = 'shimmer-style';
+        st.textContent = '@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}';
+        document.head.appendChild(st);
+      }
+    }
   } else {
-    al.style.cssText = 'background:#170808;border:1px solid #3a1010;border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;color:#d06060;display:flex;align-items:center;gap:8px';
-    al.textContent = `Abaixo do ritmo (${diff.toFixed(0)}% em relação ao ideal). Atenção!`;
+    topbar.style.background = '';
+    topbar.style.borderBottom = '';
+    topbar.style.boxShadow = '';
+    cardsEl.style.filter = '';
+    const overlay = document.getElementById('meta-overlay');
+    if (overlay) overlay.remove();
+    if (diff >= 10) {
+      al.style.cssText = 'background:#0a2010;border:1px solid #1a5020;border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;color:#3ab870;display:flex;align-items:center;gap:8px';
+      al.textContent = `Excelente! Acima do ritmo em ${diff.toFixed(0)}% — continue assim!`;
+    } else if (diff >= 0) {
+      al.style.cssText = 'background:#171300;border:1px solid #3a2e00;border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;color:#c09820;display:flex;align-items:center;gap:8px';
+      al.textContent = `No ritmo esperado (+${diff.toFixed(0)}% em relação ao ideal de ${BRL(meta)}). Mantenha a consistência.`;
+    } else {
+      al.style.cssText = 'background:#170808;border:1px solid #3a1010;border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;color:#d06060;display:flex;align-items:center;gap:8px';
+      al.textContent = `Abaixo do ritmo (${diff.toFixed(0)}% em relação ao ideal). Atenção!`;
+    }
   }
 
   document.getElementById('chart-title').textContent = `Gráfico de meta — ${MPT[m]} ${y}`;
@@ -451,7 +483,8 @@ function renderDayGrid(y, m, isCurr, todayD) {
     else if (v===0) vh='<span class="day-val zero">R$0</span>';
     else vh=`<span class="day-val">${BRL(v)}</span>`;
     cell.innerHTML = `<span class="day-date">${ds}</span>${vh}`;
-    cell.addEventListener('click', ()=>openModal(y,m,d));
+    if (!future) cell.addEventListener('click', ()=>openModal(y,m,d));
+    else cell.style.cursor = 'default';
     grid.appendChild(cell);
   }
 }
