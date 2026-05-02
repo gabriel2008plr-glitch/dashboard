@@ -378,30 +378,135 @@ function render() {
     const over = (pct - 100).toFixed(1);
     al.style.cssText = 'background:linear-gradient(90deg,#2a0828,#1a0830);border:1px solid #c060c0;border-radius:7px;padding:10px 16px;margin-bottom:14px;font-size:12px;color:#f0a0f8;display:flex;align-items:center;gap:8px;font-weight:500;letter-spacing:.02em';
     al.innerHTML = `🎉 META BATIDA! Você está <b style="color:#ff80ff">${over}% acima da meta</b> — parabéns, continue voando!`;
-    topbar.style.background = 'linear-gradient(90deg,#1a0828 0%,#0e1022 40%,#1a0828 100%)';
-    topbar.style.borderBottom = '1px solid #8030a0';
-    topbar.style.boxShadow = '0 2px 24px 0 rgba(200,80,220,.18)';
-    cardsEl.style.filter = 'drop-shadow(0 0 12px rgba(200,80,255,.13))';
+
+    // Injetar estilos de animação
+    if (!document.getElementById('celebration-style')) {
+      const st = document.createElement('style');
+      st.id = 'celebration-style';
+      st.textContent = `
+        @keyframes glowCycle {
+          0%   { box-shadow: 0 6px 32px 0 rgba(157,125,240,.55), 0 2px 8px rgba(157,125,240,.3); border-color:#9d7df0 }
+          16%  { box-shadow: 0 6px 32px 0 rgba(80,144,224,.55), 0 2px 8px rgba(80,144,224,.3); border-color:#5090e0 }
+          33%  { box-shadow: 0 6px 32px 0 rgba(58,184,112,.55), 0 2px 8px rgba(58,184,112,.3); border-color:#3ab870 }
+          50%  { box-shadow: 0 6px 32px 0 rgba(192,152,32,.55), 0 2px 8px rgba(192,152,32,.3); border-color:#c09820 }
+          66%  { box-shadow: 0 6px 32px 0 rgba(208,96,96,.55), 0 2px 8px rgba(208,96,96,.3); border-color:#d06060 }
+          83%  { box-shadow: 0 6px 32px 0 rgba(200,80,220,.55), 0 2px 8px rgba(200,80,220,.3); border-color:#c050dc }
+          100% { box-shadow: 0 6px 32px 0 rgba(157,125,240,.55), 0 2px 8px rgba(157,125,240,.3); border-color:#9d7df0 }
+        }
+        @keyframes glowCycleSoft {
+          0%   { box-shadow: 0 4px 18px 0 rgba(157,125,240,.18) }
+          16%  { box-shadow: 0 4px 18px 0 rgba(80,144,224,.18) }
+          33%  { box-shadow: 0 4px 18px 0 rgba(58,184,112,.18) }
+          50%  { box-shadow: 0 4px 18px 0 rgba(192,152,32,.18) }
+          66%  { box-shadow: 0 4px 18px 0 rgba(208,96,96,.18) }
+          83%  { box-shadow: 0 4px 18px 0 rgba(200,80,220,.18) }
+          100% { box-shadow: 0 4px 18px 0 rgba(157,125,240,.18) }
+        }
+        @keyframes topbarGlow {
+          0%   { box-shadow: 0 4px 40px 0 rgba(157,125,240,.45); border-bottom-color:#9d7df0 }
+          16%  { box-shadow: 0 4px 40px 0 rgba(80,144,224,.45); border-bottom-color:#5090e0 }
+          33%  { box-shadow: 0 4px 40px 0 rgba(58,184,112,.45); border-bottom-color:#3ab870 }
+          50%  { box-shadow: 0 4px 40px 0 rgba(192,152,32,.45); border-bottom-color:#c09820 }
+          66%  { box-shadow: 0 4px 40px 0 rgba(208,96,96,.45); border-bottom-color:#d06060 }
+          83%  { box-shadow: 0 4px 40px 0 rgba(200,80,220,.45); border-bottom-color:#c050dc }
+          100% { box-shadow: 0 4px 40px 0 rgba(157,125,240,.45); border-bottom-color:#9d7df0 }
+        }
+        @keyframes alertGlow {
+          0%   { box-shadow: 0 0 24px 4px rgba(157,125,240,.5); border-color:#9d7df0 }
+          16%  { box-shadow: 0 0 24px 4px rgba(80,144,224,.5); border-color:#5090e0 }
+          33%  { box-shadow: 0 0 24px 4px rgba(58,184,112,.5); border-color:#3ab870 }
+          50%  { box-shadow: 0 0 24px 4px rgba(192,152,32,.5); border-color:#c09820 }
+          66%  { box-shadow: 0 0 24px 4px rgba(208,96,96,.5); border-color:#d06060 }
+          83%  { box-shadow: 0 0 24px 4px rgba(200,80,220,.5); border-color:#c050dc }
+          100% { box-shadow: 0 0 24px 4px rgba(157,125,240,.5); border-color:#9d7df0 }
+        }
+        @keyframes shimmer {
+          0%   { background-position: 200% 0 }
+          100% { background-position: -200% 0 }
+        }
+        .celebrate-topbar { animation: topbarGlow 3s linear infinite !important; }
+        .celebrate-alert  { animation: alertGlow 3s linear infinite !important; }
+        .celebrate-strong { animation: glowCycle 3s linear infinite !important; }
+        .celebrate-soft   { animation: glowCycleSoft 3s linear infinite !important; }
+
+        /* FOGOS */
+        @keyframes firework-rise  { to { transform: translateY(-320px) scale(.5); opacity:0 } }
+        @keyframes firework-spark { to { transform: translate(var(--sx),var(--sy)) scale(0); opacity:0 } }
+        .fw-shell { position:fixed; bottom:0; width:6px; height:6px; border-radius:50%; animation: firework-rise 1s ease-out forwards; pointer-events:none; z-index:9999; }
+        .fw-spark { position:fixed; width:5px; height:5px; border-radius:50%; animation: firework-spark .8s ease-out forwards; pointer-events:none; z-index:9999; }
+      `;
+      document.head.appendChild(st);
+    }
+
+    // Topbar
+    topbar.classList.add('celebrate-topbar');
+    topbar.style.background = 'linear-gradient(90deg,#120820 0%,#0e1022 40%,#120820 100%)';
+
+    // Alert
+    al.classList.add('celebrate-alert');
+
+    // Cards individuais forte
+    document.querySelectorAll('.card').forEach(c => c.classList.add('celebrate-strong'));
+
+    // Seções suaves
+    document.querySelectorAll('.chart-wrap, .hist-wrap, .meta-row').forEach(c => c.classList.add('celebrate-soft'));
+
+    // Faixa shimmer no topo
     let overlay = document.getElementById('meta-overlay');
     if (!overlay) {
       overlay = document.createElement('div');
       overlay.id = 'meta-overlay';
-      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#c060e0,#f080f8,#9040c0,#f080f8,#c060e0);background-size:200% 100%;animation:shimmer 2.5s linear infinite;z-index:999;pointer-events:none';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#9d7df0,#5090e0,#3ab870,#c09820,#d06060,#c050dc,#9d7df0);background-size:200% 100%;animation:shimmer 2s linear infinite;z-index:1000;pointer-events:none';
       document.body.prepend(overlay);
-      if (!document.getElementById('shimmer-style')) {
-        const st = document.createElement('style');
-        st.id = 'shimmer-style';
-        st.textContent = '@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}';
-        document.head.appendChild(st);
-      }
     }
+
+    // Fogos de artifício (dispara uma vez ao bater a meta)
+    if (!window._fwFired) {
+      window._fwFired = true;
+      const colors = ['#9d7df0','#5090e0','#3ab870','#c09820','#d06060','#c050dc','#f0f060','#60f0f0'];
+      function launchFirework() {
+        const x = Math.random() * window.innerWidth;
+        const shell = document.createElement('div');
+        shell.className = 'fw-shell';
+        shell.style.left = x + 'px';
+        shell.style.background = colors[Math.floor(Math.random()*colors.length)];
+        document.body.appendChild(shell);
+        setTimeout(() => {
+          shell.remove();
+          // Explosão
+          const bx = x, by = window.innerHeight - 320 * Math.random() - 80;
+          for (let i = 0; i < 18; i++) {
+            const spark = document.createElement('div');
+            spark.className = 'fw-spark';
+            const angle = (i / 18) * Math.PI * 2;
+            const dist = 60 + Math.random() * 80;
+            spark.style.left = bx + 'px';
+            spark.style.top  = by + 'px';
+            spark.style.background = colors[Math.floor(Math.random()*colors.length)];
+            spark.style.setProperty('--sx', Math.cos(angle)*dist + 'px');
+            spark.style.setProperty('--sy', Math.sin(angle)*dist + 'px');
+            document.body.appendChild(spark);
+            setTimeout(() => spark.remove(), 850);
+          }
+        }, 900);
+      }
+      // Lança 8 fogos em sequência
+      for (let i = 0; i < 8; i++) setTimeout(launchFirework, i * 350);
+    }
+
   } else {
+    // Remove tudo
+    topbar.classList.remove('celebrate-topbar');
     topbar.style.background = '';
     topbar.style.borderBottom = '';
     topbar.style.boxShadow = '';
-    cardsEl.style.filter = '';
+    al.classList.remove('celebrate-alert');
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('celebrate-strong'));
+    document.querySelectorAll('.chart-wrap, .hist-wrap, .meta-row').forEach(c => c.classList.remove('celebrate-soft'));
     const overlay = document.getElementById('meta-overlay');
     if (overlay) overlay.remove();
+    window._fwFired = false;
+
     if (diff >= 10) {
       al.style.cssText = 'background:#0a2010;border:1px solid #1a5020;border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;color:#3ab870;display:flex;align-items:center;gap:8px';
       al.textContent = `Excelente! Acima do ritmo em ${diff.toFixed(0)}% — continue assim!`;
