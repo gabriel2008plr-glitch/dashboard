@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard de Performance</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0b0d1a;--bg2:#0e1022;--bg3:#0f1126;--bg4:#131528;
+    --border:#1c1e38;--border2:#252748;--border3:#352870;
+    --purple:#9d7df0;--purple-dim:#5c2fc2;--purple-bg:#1e1040;
+    --blue:#5090e0;--green:#3ab870;--amber:#c09820;--red:#d06060;
+    --text:#b0b4d0;--text2:#7070a0;--text3:#5a5e80;--text4:#3a3c58;
+  }
+  html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.5}
+  
+  /* TOPBAR */
+  .topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100}
+  .tb-title h1{font-size:15px;font-weight:500;color:var(--purple);letter-spacing:.01em;font-family:'DM Sans',sans-serif}
+  .tb-title p{font-size:10px;color:var(--text4);margin-top:1px;letter-spacing:.02em}
+  .tb-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .clock-pill{background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 10px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace}
+  #clock-time{color:var(--amber);font-weight:500}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:#444;display:inline-block;transition:background .3s}
+  .sync-dot.ok{background:var(--green)}
+  .sync-dot.loading{background:var(--amber)}
+  .sync-dot.err{background:var(--red)}
+  .mnav{display:flex;align-items:center;gap:6px}
+  .mnav button{background:var(--bg4);border:1px solid var(--border2);color:var(--text2);width:24px;height:24px;border-radius:4px;cursor:pointer;font-size:12px;transition:all .15s}
+  .mnav button:hover{background:var(--border);color:var(--text)}
+  #month-label{font-size:12px;font-weight:500;color:var(--text);min-width:110px;text-align:center;letter-spacing:.02em}
+
+  /* CONTENT */
+  .content{padding:16px 24px;max-width:1400px;margin:0 auto}
+
+  /* ALERT */
+  .alert{border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;display:flex;align-items:center;gap:8px;letter-spacing:.01em;transition:all .3s}
+
+  /* META ROW */
+  .meta-row{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .meta-row label{font-size:9px;color:var(--text3);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.08em}
+  .meta-row input{background:#080a18;border:1px solid var(--border2);border-radius:5px;color:var(--text);padding:5px 10px;font-size:12px;width:150px;font-family:'DM Mono',monospace}
+  .meta-row input:focus{outline:none;border-color:var(--purple-dim)}
+  .btn-primary{background:var(--purple-dim);border:none;color:#e0d0ff;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:500;font-family:'DM Sans',sans-serif;letter-spacing:.02em;transition:background .15s}
+  .btn-primary:hover{background:#7040e8}
+  .meta-curr{font-size:10px;color:var(--text4);margin-top:3px}
+
+  /* CARDS */
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  @media(max-width:700px){.cards{grid-template-columns:repeat(2,1fr)}}
+  .card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+  .card-label{font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+  .card-val{font-size:22px;font-weight:500;letter-spacing:-.01em;font-family:'DM Mono',monospace}
+  .card-sub{font-size:10px;color:var(--text3);margin-top:2px}
+  .c-purple{color:var(--purple)}.c-blue{color:var(--blue)}.c-green{color:var(--green)}.c-amber{color:var(--amber)}
+
+  /* CHART WRAP */
+  .section-title{font-size:9px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+  .chart-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px}
+  .chart-badge{display:inline-block;background:var(--purple-bg);color:var(--purple);font-size:11px;padding:2px 10px;border-radius:20px;margin-bottom:8px;font-family:'DM Mono',monospace}
+  .legend-row{display:flex;gap:18px;margin-bottom:10px;font-size:10px;color:var(--text3);flex-wrap:wrap}
+  .legend-row span{display:flex;align-items:center;gap:5px}
+  .leg-line{display:inline-block;height:2px;width:22px}
+  .leg-dash{display:inline-block;height:0;width:22px;border-top:2px dashed}
+
+  /* DAY GRID */
+  .day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:5px;margin-bottom:14px}
+  .day-cell{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color .15s}
+  .day-cell:hover{border-color:var(--border3)}
+  .day-cell.weekend{opacity:.38}
+  .day-cell.future{opacity:.28}
+  .day-date{font-size:10px;color:var(--text4);letter-spacing:.02em}
+  .day-val{font-size:11px;font-weight:500;color:var(--purple);font-family:'DM Mono',monospace}
+  .day-val.zero{color:#2a2c48}
+  .day-val.dash{color:#1e2038}
+
+  /* HIST */
+  .hist-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px}
+  .hist-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .hist-tabs{display:flex;gap:5px}
+  .htab{background:var(--bg4);border:1px solid var(--border2);color:var(--text4);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:10px;letter-spacing:.05em;text-transform:uppercase;transition:all .15s;font-family:'DM Sans',sans-serif}
+  .htab.active{background:var(--purple-bg);border-color:var(--border3);color:var(--purple)}
+  .htab:hover:not(.active){color:var(--text2);border-color:var(--border2)}
+  .hist-controls{display:flex;align-items:center;gap:8px}
+  .ynav{display:flex;align-items:center;gap:5px}
+  .ynav button{background:var(--bg4);border:1px solid var(--border2);color:var(--text3);width:22px;height:22px;border-radius:3px;cursor:pointer;font-size:11px;transition:all .15s}
+  .ynav button:hover{background:var(--border);color:var(--text)}
+  #hist-year-label{font-size:11px;color:var(--text2);min-width:36px;text-align:center;font-family:'DM Mono',monospace}
+  .month-sel{background:var(--bg4);border:1px solid var(--border2);color:var(--text2);border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
+  .month-sel:focus{outline:none;border-color:var(--border3)}
+  .hist-total{font-size:10px;color:var(--text4);margin-top:8px;letter-spacing:.02em}
+  .hist-total span{color:var(--green);font-weight:500;font-family:'DM Mono',monospace}
+  .btn-danger{background:#1a0808;border:1px solid #3a1010;color:#a05050;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:10px;letter-spacing:.04em;text-transform:uppercase;margin-top:8px;transition:all .15s;font-family:'DM Sans',sans-serif}
+  .btn-danger:hover{background:#240808;border-color:#502020;color:var(--red)}
+
+  /* MODAL */
+  .modal-bg{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);align-items:center;justify-content:center;z-index:200}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:20px;width:270px}
+  .modal h3{font-size:12px;color:var(--purple);margin-bottom:10px;letter-spacing:.04em;font-family:'DM Mono',monospace}
+  .modal input{background:#080a18;border:1px solid var(--border2);border-radius:5px;color:var(--text);padding:7px 10px;font-size:14px;width:100%;margin-bottom:10px;font-family:'DM Mono',monospace}
+  .modal input:focus{outline:none;border-color:var(--purple-dim)}
+  .modal-btns{display:flex;gap:6px;justify-content:flex-end}
+  .modal-btns button{padding:6px 13px;border-radius:4px;cursor:pointer;font-size:11px;border:none;font-family:'DM Sans',sans-serif;letter-spacing:.03em}
+  .mbtn-cancel{background:var(--bg4);color:var(--text3)}
+  .mbtn-cancel:hover{background:var(--border);color:var(--text2)}
+  .mbtn-save{background:var(--purple-dim);color:#e0d0ff}
+  .mbtn-save:hover{background:#7040e8}
+
+  /* SYNC STATUS */
+  .sync-bar{font-size:10px;color:var(--text4);text-align:right;margin-bottom:6px;letter-spacing:.02em}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-title">
+    <h1>Dashboard de Performance</h1>
+    <p id="tb-sub">Carregando...</p>
+  </div>
+  <div class="tb-right">
+    <div class="clock-pill">
+      <span id="clock-date"></span>
+      <span id="clock-time"></span>
+    </div>
+    <div class="mnav">
+      <button id="prev-m">&lt;</button>
+      <span id="month-label"></span>
+      <button id="next-m">&gt;</button>
+    </div>
+    <span class="sync-dot" id="sync-dot" title="Status da nuvem"></span>
+  </div>
+</div>
+
+<div class="content">
+  <div class="sync-bar" id="sync-bar">Conectando à nuvem...</div>
+  <div class="alert" id="alert-box">Calculando...</div>
+
+  <div class="meta-row">
+    <div>
+      <label id="meta-label">Meta do mês</label>
+      <input type="number" id="meta-input" value="50000"/>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <button class="btn-primary" id="meta-btn">Atualizar meta</button>
+      <p class="meta-curr" id="meta-curr-lbl"></p>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="card-label">Meta do mês</div><div class="card-val c-purple" id="c-meta">R$0</div></div>
+    <div class="card"><div class="card-label">Alcançado</div><div class="card-val c-blue" id="c-alc">R$0</div><div class="card-sub" id="c-alc-sub"></div></div>
+    <div class="card"><div class="card-label">% da meta</div><div class="card-val c-green" id="c-pct">0%</div><div class="card-sub" id="c-pct-sub"></div></div>
+    <div class="card"><div class="card-label">Dias úteis</div><div class="card-val c-amber" id="c-dias">0/0</div><div class="card-sub" id="c-dias-sub"></div></div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="section-title" id="chart-title">Gráfico de meta</div>
+    <div class="chart-badge" id="chart-badge">Acumulado: R$0</div>
+    <div class="legend-row">
+      <span><span class="leg-line" style="background:var(--purple)"></span>Acumulado real</span>
+      <span><span class="leg-dash" style="border-color:#5a5a90"></span>Ritmo ideal (linear)</span>
+      <span><span class="leg-dash" style="border-color:var(--green)"></span>Meta</span>
+    </div>
+    <div style="position:relative;width:100%;height:260px">
+      <canvas id="mainChart" role="img" aria-label="Gráfico de evolução acumulada vs meta mensal">Evolução acumulada vs meta.</canvas>
+    </div>
+  </div>
+
+  <div class="section-title">Valores por dia</div>
+  <div class="day-grid" id="day-grid"></div>
+
+  <div class="hist-wrap">
+    <div class="hist-top">
+      <div>
+        <div class="section-title" style="margin-bottom:6px">Comparativo histórico</div>
+        <div class="hist-tabs">
+          <button class="htab active" data-tab="months">Meses</button>
+          <button class="htab" data-tab="weeks">Semanas</button>
+          <button class="htab" data-tab="years">Anos</button>
+        </div>
+      </div>
+      <div class="hist-controls">
+        <select class="month-sel" id="week-month-sel" style="display:none">
+          <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+          <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+          <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+          <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+        </select>
+        <div class="ynav">
+          <button id="prev-y">&lt;</button>
+          <span id="hist-year-label">2026</span>
+          <button id="next-y">&gt;</button>
+        </div>
+      </div>
+    </div>
+    <div style="position:relative;width:100%;height:210px">
+      <canvas id="histChart" role="img" aria-label="Comparativo histórico de vendas">Comparativo histórico.</canvas>
+    </div>
+    <div class="hist-total">Total <span id="hist-scope-label">2026</span>: <span id="hist-total-val">R$0</span></div>
+    <button class="btn-danger" id="zero-btn">Zerar tudo</button>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="day-modal">
+  <div class="modal">
+    <h3 id="modal-title">Editar dia</h3>
+    <input type="number" id="modal-input" placeholder="Valor (R$)" min="0"/>
+    <div class="modal-btns">
+      <button class="mbtn-cancel" id="modal-cancel">Cancelar</button>
+      <button class="mbtn-save" id="modal-save">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// CONFIGURAÇÃO JSONBIN
+// =============================================
+const JSONBIN_KEY = '$2a$10$YvsrAplTOKDqEH6t0FdZ2uL9XHAcI/32HF/kyAkkstGYC2tT5f8Mq';
+const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
+let BIN_ID = localStorage.getItem('perf_bin_id') || null;
+let saveTimer = null;
+let lastSyncTime = null;
+
+// =============================================
+// ESTADO
+// =============================================
+const MPT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MSH=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const DSH=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const BRL = v => 'R$' + Math.round(v).toLocaleString('pt-BR');
+
+let S = {
+  viewMonth: new Date().getMonth(),
+  viewYear: new Date().getFullYear(),
+  histTab: 'months',
+  histYear: new Date().getFullYear(),
+  histWeekMonth: new Date().getMonth(),
+  editingDay: null,
+  data: {}
+};
+
+// =============================================
+// JSONBIN API
+// =============================================
+function setSyncStatus(status, msg) {
+  const dot = document.getElementById('sync-dot');
+  const bar = document.getElementById('sync-bar');
+  dot.className = 'sync-dot ' + status;
+  if (msg) bar.textContent = msg;
+}
+
+async function createBin() {
+  setSyncStatus('loading', 'Criando armazenamento na nuvem...');
+  const res = await fetch(JSONBIN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Name': 'dashboard-performance', 'X-Bin-Private': 'false' },
+    body: JSON.stringify({ data: {} })
+  });
+  const json = await res.json();
+  BIN_ID = json.metadata.id;
+  localStorage.setItem('perf_bin_id', BIN_ID);
+  return BIN_ID;
+}
+
+async function loadFromCloud() {
+  setSyncStatus('loading', 'Carregando dados da nuvem...');
+  try {
+    if (!BIN_ID) await createBin();
+    const res = await fetch(`${JSONBIN_URL}/${BIN_ID}/latest`, {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
+    const json = await res.json();
+    S.data = json.record.data || {};
+    setSyncStatus('ok', 'Sincronizado · ' + new Date().toLocaleTimeString('pt-BR'));
+    lastSyncTime = new Date();
+  } catch(e) {
+    setSyncStatus('err', 'Erro ao conectar · usando dados locais');
+    try { S.data = JSON.parse(localStorage.getItem('perf_local') || '{}'); } catch(_) { S.data = {}; }
+  }
+  render();
+}
+
+async function saveToCloud() {
+  setSyncStatus('loading', 'Salvando...');
+  localStorage.setItem('perf_local', JSON.stringify(S.data));
+  try {
+    if (!BIN_ID) await createBin();
+    await fetch(`${JSONBIN_URL}/${BIN_ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      body: JSON.stringify({ data: S.data })
+    });
+    setSyncStatus('ok', 'Salvo na nuvem · ' + new Date().toLocaleTimeString('pt-BR'));
+  } catch(e) {
+    setSyncStatus('err', 'Salvo localmente (sem conexão)');
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToCloud, 800);
+}
+
+// Auto-refresh a cada 30 segundos (para ver edições de outros dispositivos)
+setInterval(async () => {
+  if (!BIN_ID) return;
+  try {
+    const res = await fetch(`${JSONBIN_URL}/${BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const json = await res.json();
+    S.data = json.record.data || {};
+    setSyncStatus('ok', 'Sincronizado · ' + new Date().toLocaleTimeString('pt-BR'));
+    render();
+  } catch(e) {}
+}, 30000);
+
+// =============================================
+// HELPERS
+// =============================================
+const metaKey = (y,m) => `meta_${y}_${m}`;
+const dayKey  = (y,m,d) => `day_${y}_${m}_${d}`;
+const getMeta = (y,m) => S.data[metaKey(y,m)] || 50000;
+const setMeta = (y,m,v) => { S.data[metaKey(y,m)] = v; };
+const getDay  = (y,m,d) => S.data[dayKey(y,m,d)];
+const setDay  = (y,m,d,v) => { S.data[dayKey(y,m,d)] = v; };
+const dim     = (y,m) => new Date(y,m+1,0).getDate();
+const isWE    = (y,m,d) => { const w = new Date(y,m,d).getDay(); return w===0||w===6; };
+
+function bd(y,m) { let n=0; for(let d=1;d<=dim(y,m);d++) if(!isWE(y,m,d)) n++; return n; }
+function bdUpto(y,m,u) { let n=0; for(let d=1;d<=u;d++) if(!isWE(y,m,d)) n++; return n; }
+function monthTotal(y,m) { let t=0; for(let d=1;d<=dim(y,m);d++){const v=getDay(y,m,d);if(v!=null)t+=v;} return t; }
+
+// =============================================
+// CHARTS
+// =============================================
+let mcInst=null, hcInst=null;
+
+function render() {
+  const {viewMonth:m, viewYear:y} = S;
+  const now = new Date();
+  const isCurr = now.getFullYear()===y && now.getMonth()===m;
+  const curDay = isCurr ? now.getDate() : dim(y,m);
+
+  document.getElementById('month-label').textContent = MPT[m] + ' ' + y;
+  document.getElementById('tb-sub').textContent = `${MPT[m]} ${y} · ${bd(y,m)} dias úteis · Hoje: ${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+  document.getElementById('meta-label').textContent = `Meta de ${MPT[m]} ${y}`;
+
+  const meta = getMeta(y,m);
+  document.getElementById('meta-input').value = meta;
+  document.getElementById('meta-curr-lbl').textContent = `Meta atual: ${BRL(meta)}`;
+  document.getElementById('c-meta').textContent = BRL(meta);
+
+  const total = monthTotal(y,m);
+  const pct = meta > 0 ? (total/meta*100) : 0;
+  const bdN = bd(y,m);
+  const bdD = bdUpto(y,m,curDay);
+  const idealPct = bdN > 0 ? (bdD/bdN*100) : 100;
+  const diff = pct - idealPct;
+
+  document.getElementById('c-alc').textContent = BRL(total);
+  document.getElementById('c-alc-sub').textContent = `${pct.toFixed(1)}% da meta`;
+  document.getElementById('c-pct').textContent = pct.toFixed(1) + '%';
+  document.getElementById('c-pct-sub').textContent = `Ideal agora: ${idealPct.toFixed(0)}%`;
+  document.getElementById('c-dias').textContent = `${bdD}/${bdN}`;
+  document.getElementById('c-dias-sub').textContent = `${Math.round(bdD/Math.max(bdN,1)*100)}% do mês`;
+
+  const al = document.getElementById('alert-box');
+  if (diff >= 10) {
+    al.style.cssText = 'background:#0a2010;border:1px solid #1a5020;border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;color:#3ab870;display:flex;align-items:center;gap:8px';
+    al.textContent = `Excelente! Acima do ritmo em ${diff.toFixed(0)}% — continue assim!`;
+  } else if (diff >= 0) {
+    al.style.cssText = 'background:#171300;border:1px solid #3a2e00;border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;color:#c09820;display:flex;align-items:center;gap:8px';
+    al.textContent = `No ritmo esperado (+${diff.toFixed(0)}% em relação ao ideal de ${BRL(meta)}). Mantenha a consistência.`;
+  } else {
+    al.style.cssText = 'background:#170808;border:1px solid #3a1010;border-radius:7px;padding:8px 14px;margin-bottom:14px;font-size:11px;color:#d06060;display:flex;align-items:center;gap:8px';
+    al.textContent = `Abaixo do ritmo (${diff.toFixed(0)}% em relação ao ideal). Atenção!`;
+  }
+
+  document.getElementById('chart-title').textContent = `Gráfico de meta — ${MPT[m]} ${y}`;
+  document.getElementById('chart-badge').textContent = `Acumulado: ${BRL(total)}`;
+
+  renderMainChart(y, m, meta, curDay);
+  renderDayGrid(y, m, isCurr, now.getDate());
+  renderHistChart();
+}
+
+function renderMainChart(y, m, meta, upTo) {
+  const days = dim(y,m);
+  const labels=[], accData=[], idealData=[], metaLine=[];
+  let acc=0;
+  for (let d=1; d<=days; d++) {
+    labels.push(String(d).padStart(2,'0')+'/'+String(m+1).padStart(2,'0'));
+    const v = getDay(y,m,d);
+    if (v!=null) acc+=v;
+    accData.push(d<=upTo ? acc : null);
+    // Linha ideal: reta perfeita do dia 1 ao último dia
+    idealData.push(Math.round(meta * (d-1) / (days-1)));
+    metaLine.push(meta);
+  }
+
+  if (mcInst) mcInst.destroy();
+  mcInst = new Chart(document.getElementById('mainChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Acumulado real', data:accData, borderColor:'#9d7df0', backgroundColor:'rgba(100,60,200,.06)', tension:.35, pointRadius:0, borderWidth:2, fill:true, spanGaps:false, order:1 },
+        { label:'Ritmo ideal', data:idealData, borderColor:'#4a4a80', borderDash:[5,4], pointRadius:0, borderWidth:1.5, fill:false, order:2 },
+        { label:'Meta', data:metaLine, borderColor:'#3ab870', borderDash:[7,3], pointRadius:0, borderWidth:1.5, fill:false, order:3 }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend:{display:false},
+        tooltip:{
+          callbacks:{ label: ctx => ctx.dataset.label+': '+BRL(ctx.parsed.y) },
+          backgroundColor:'#0e1022', borderColor:'#252748', borderWidth:1,
+          titleColor:'#9d7df0', bodyColor:'#8080b0', padding:8
+        }
+      },
+      scales: {
+        x:{ ticks:{color:'#3a3c58',font:{size:9,family:'DM Mono'},maxRotation:0,autoSkip:true,maxTicksLimit:12}, grid:{color:'rgba(255,255,255,.025)'}, border:{color:'#1c1e38'} },
+        y:{ ticks:{color:'#3a3c58',font:{size:9,family:'DM Mono'},callback:v=>v>=1000?'R$'+Math.round(v/1000)+'k':BRL(v)}, grid:{color:'rgba(255,255,255,.025)'}, border:{color:'#1c1e38'}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+function renderDayGrid(y, m, isCurr, todayD) {
+  const grid = document.getElementById('day-grid');
+  grid.innerHTML = '';
+  for (let d=1; d<=dim(y,m); d++) {
+    const dow = new Date(y,m,d).getDay();
+    const we = dow===0||dow===6;
+    const future = isCurr && d>todayD;
+    const v = getDay(y,m,d);
+    const cell = document.createElement('div');
+    cell.className = 'day-cell' + (we?' weekend':'') + (future?' future':'');
+    const ds = `${DSH[dow]} ${String(d).padStart(2,'0')}/${String(m+1).padStart(2,'0')}`;
+    let vh;
+    if (v==null) vh='<span class="day-val dash">—</span>';
+    else if (v===0) vh='<span class="day-val zero">R$0</span>';
+    else vh=`<span class="day-val">${BRL(v)}</span>`;
+    cell.innerHTML = `<span class="day-date">${ds}</span>${vh}`;
+    cell.addEventListener('click', ()=>openModal(y,m,d));
+    grid.appendChild(cell);
+  }
+}
+
+function getWeeksOfMonth(y, m) {
+  const weeks=[], days=dim(y,m);
+  let d=1, wn=1;
+  while (d<=days) {
+    let end=d;
+    while (end<days && new Date(y,m,end+1).getDay()!==0) end++;
+    let t=0;
+    for (let dd=d; dd<=end; dd++) { const v=getDay(y,m,dd); if(v!=null) t+=v; }
+    weeks.push({ label:`Sem ${wn} (${String(d).padStart(2,'0')}–${String(end).padStart(2,'0')})`, total:t });
+    wn++; d=end+1;
+  }
+  return weeks;
+}
+
+function renderHistChart() {
+  const {histTab, histYear, histWeekMonth} = S;
+  let labels=[], data=[], scopeLabel=String(histYear);
+  const now = new Date();
+
+  if (histTab==='months') {
+    labels=MSH;
+    for (let mo=0;mo<12;mo++) data.push(monthTotal(histYear,mo));
+  } else if (histTab==='weeks') {
+    const weeks = getWeeksOfMonth(histYear, histWeekMonth);
+    labels=weeks.map(w=>w.label);
+    data=weeks.map(w=>w.total);
+    scopeLabel=`${MPT[histWeekMonth]} ${histYear}`;
+  } else {
+    const sy=histYear-4;
+    for (let yy=sy;yy<=histYear;yy++) { labels.push(String(yy)); let t=0; for(let mo=0;mo<12;mo++) t+=monthTotal(yy,mo); data.push(t); }
+    scopeLabel=`${histYear-4}–${histYear}`;
+  }
+
+  const colors = data.map((v,i)=>{
+    if (histTab==='months' && i===now.getMonth() && histYear===now.getFullYear()) return '#3ab870';
+    if (histTab==='weeks' && histYear===now.getFullYear() && histWeekMonth===now.getMonth()) return '#9d7df0';
+    return v>0 ? '#5c2fc2' : '#131528';
+  });
+
+  document.getElementById('hist-scope-label').textContent = scopeLabel;
+  document.getElementById('hist-total-val').textContent = BRL(data.reduce((a,b)=>a+b,0));
+  document.getElementById('hist-year-label').textContent = histYear;
+  document.getElementById('week-month-sel').style.display = histTab==='weeks' ? 'inline-block' : 'none';
+  document.getElementById('week-month-sel').value = histWeekMonth;
+
+  if (hcInst) hcInst.destroy();
+  hcInst = new Chart(document.getElementById('histChart'), {
+    type:'bar',
+    data:{ labels, datasets:[{data, backgroundColor:colors, borderRadius:3, borderSkipped:false}] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{ callbacks:{label:ctx=>BRL(ctx.parsed.y)}, backgroundColor:'#0e1022', borderColor:'#252748', borderWidth:1, titleColor:'#9d7df0', bodyColor:'#8080b0' }
+      },
+      scales:{
+        x:{ ticks:{color:'#3a3c58',font:{size:9,family:'DM Mono'},autoSkip:false,maxRotation:histTab==='weeks'?35:0}, grid:{display:false}, border:{color:'#1c1e38'} },
+        y:{ ticks:{color:'#3a3c58',font:{size:9,family:'DM Mono'},callback:v=>v>=1000?'R$'+Math.round(v/1000)+'k':BRL(v)}, grid:{color:'rgba(255,255,255,.025)'}, border:{color:'#1c1e38'}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+// =============================================
+// MODAL
+// =============================================
+function openModal(y,m,d) {
+  S.editingDay={y,m,d};
+  const v=getDay(y,m,d);
+  document.getElementById('modal-title').textContent=`${DSH[new Date(y,m,d).getDay()]} ${String(d).padStart(2,'0')}/${String(m+1).padStart(2,'0')}/${y}`;
+  document.getElementById('modal-input').value=v!=null?v:'';
+  document.getElementById('day-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('modal-input').focus(),50);
+}
+function closeModal() { document.getElementById('day-modal').classList.remove('open'); S.editingDay=null; }
+
+document.getElementById('modal-cancel').addEventListener('click', closeModal);
+document.getElementById('day-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeModal(); });
+document.getElementById('modal-save').addEventListener('click', ()=>{
+  if (!S.editingDay) return;
+  const {y,m,d}=S.editingDay;
+  const raw=document.getElementById('modal-input').value.trim();
+  if (raw==='') delete S.data[dayKey(y,m,d)];
+  else setDay(y,m,d,parseFloat(raw)||0);
+  scheduleSave(); closeModal(); render();
+});
+document.getElementById('modal-input').addEventListener('keydown', e=>{
+  if (e.key==='Enter') document.getElementById('modal-save').click();
+  if (e.key==='Escape') closeModal();
+});
+
+// =============================================
+// NAVEGAÇÃO
+// =============================================
+document.getElementById('prev-m').addEventListener('click',()=>{ S.viewMonth--; if(S.viewMonth<0){S.viewMonth=11;S.viewYear--;} render(); });
+document.getElementById('next-m').addEventListener('click',()=>{ S.viewMonth++; if(S.viewMonth>11){S.viewMonth=0;S.viewYear++;} render(); });
+document.getElementById('prev-y').addEventListener('click',()=>{ S.histYear--; renderHistChart(); });
+document.getElementById('next-y').addEventListener('click',()=>{ S.histYear++; renderHistChart(); });
+document.getElementById('week-month-sel').addEventListener('change', e=>{ S.histWeekMonth=parseInt(e.target.value); renderHistChart(); });
+document.querySelectorAll('.htab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.htab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    S.histTab=btn.dataset.tab;
+    renderHistChart();
+  });
+});
+document.getElementById('meta-btn').addEventListener('click',()=>{
+  const v=parseFloat(document.getElementById('meta-input').value)||50000;
+  setMeta(S.viewYear,S.viewMonth,v);
+  scheduleSave(); render();
+});
+document.getElementById('zero-btn').addEventListener('click',()=>{
+  if (confirm('Tem certeza? Isso apagará TODOS os dados da nuvem.')) { S.data={}; scheduleSave(); render(); }
+});
+
+// =============================================
+// RELÓGIO
+// =============================================
+function updateClock() {
+  const n=new Date();
+  document.getElementById('clock-date').textContent=`${DSH[n.getDay()]}, ${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`;
+  document.getElementById('clock-time').textContent=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// =============================================
+// INIT
+// =============================================
+loadFromCloud();
+</script>
+</body>
+</html>
