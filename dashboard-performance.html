@@ -201,7 +201,10 @@
       <canvas id="histChart" role="img" aria-label="Comparativo histórico de vendas">Comparativo histórico.</canvas>
     </div>
     <div class="hist-total">Total <span id="hist-scope-label">2026</span>: <span id="hist-total-val">R$0</span></div>
-    <button class="btn-danger" id="zero-btn">Zerar tudo</button>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn-danger" id="zero-month-btn">Zerar mês atual</button>
+      <button class="btn-danger" id="zero-btn">Zerar tudo</button>
+    </div>
   </div>
 </div>
 
@@ -705,6 +708,14 @@ document.getElementById('meta-btn').addEventListener('click',()=>{
   const v=parseFloat(document.getElementById('meta-input').value)||50000;
   setMeta(S.viewYear,S.viewMonth,v);
   scheduleSave(); render();
+});
+document.getElementById('zero-month-btn').addEventListener('click',()=>{
+  const {viewYear:y, viewMonth:m} = S;
+  const label = `${MPT[m]} ${y}`;
+  if (confirm(`Zerar todos os dias de ${label}?`)) {
+    for (let d=1; d<=dim(y,m); d++) delete S.data[dayKey(y,m,d)];
+    scheduleSave(); render();
+  }
 });
 document.getElementById('zero-btn').addEventListener('click',()=>{
   if (confirm('Tem certeza? Isso apagará TODOS os dados da nuvem.')) { S.data={}; scheduleSave(); render(); }
