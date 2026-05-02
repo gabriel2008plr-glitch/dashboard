@@ -444,8 +444,10 @@ function renderDayGrid(y, m, isCurr, todayD) {
     const cell = document.createElement('div');
     cell.className = 'day-cell' + (we?' weekend':'') + (future?' future':'');
     const ds = `${DSH[dow]} ${String(d).padStart(2,'0')}/${String(m+1).padStart(2,'0')}`;
+    const past = isCurr ? d<=todayD : true;
     let vh;
-    if (v==null) vh='<span class="day-val dash">—</span>';
+    if (v==null && !past) vh='<span class="day-val dash">—</span>';
+    else if (v==null && past) vh='<span class="day-val zero">R$0</span>';
     else if (v===0) vh='<span class="day-val zero">R$0</span>';
     else vh=`<span class="day-val">${BRL(v)}</span>`;
     cell.innerHTML = `<span class="day-date">${ds}</span>${vh}`;
