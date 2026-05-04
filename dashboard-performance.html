@@ -285,21 +285,33 @@ async function createBin() {
 }
 
 async function loadFromCloud() {
-  setSyncStatus('loading', 'Carregando dados da nuvem...');
+  // Carrega cache local IMEDIATAMENTE para não travar a tela
+  try { S.data = JSON.parse(localStorage.getItem('perf_local') || '{}'); } catch(_) { S.data = {}; }
+  render();
+
+  setSyncStatus('loading', 'Sincronizando com a nuvem...');
+  const editedBeforeSync = false;
+  window._pendingEdit = false; // flag: usuário editou antes da nuvem responder?
   try {
     if (!BIN_ID) await createBin();
     const res = await fetch(`${JSONBIN_URL}/${BIN_ID}/latest`, {
       headers: { 'X-Master-Key': JSONBIN_KEY }
     });
     const json = await res.json();
-    S.data = json.record.data || {};
+    if (!window._pendingEdit) {
+      // Só atualiza se usuário não editou nada enquanto esperava
+      S.data = json.record.data || {};
+      localStorage.setItem('perf_local', JSON.stringify(S.data));
+      render();
+    } else {
+      // Usuário editou antes — salva os dados dele na nuvem
+      saveToCloud();
+    }
     setSyncStatus('ok', 'Sincronizado · ' + new Date().toLocaleTimeString('pt-BR'));
     lastSyncTime = new Date();
   } catch(e) {
-    setSyncStatus('err', 'Erro ao conectar · usando dados locais');
-    try { S.data = JSON.parse(localStorage.getItem('perf_local') || '{}'); } catch(_) { S.data = {}; }
+    setSyncStatus('err', 'Usando dados locais (sem conexão)');
   }
-  render();
 }
 
 async function saveToCloud() {
@@ -319,6 +331,7 @@ async function saveToCloud() {
 }
 
 function scheduleSave() {
+  window._pendingEdit = true; // usuário editou
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveToCloud, 800);
 }
