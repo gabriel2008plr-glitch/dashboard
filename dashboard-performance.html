@@ -781,6 +781,7 @@ document.getElementById('total-modal-input').addEventListener('keydown', e=>{
 });
 
 
+document.getElementById('zero-month-btn').addEventListener('click',()=>{
   const {viewYear:y, viewMonth:m} = S;
   const label = `${MPT[m]} ${y}`;
   if (confirm(`Zerar todos os dias de ${label}?`)) {
