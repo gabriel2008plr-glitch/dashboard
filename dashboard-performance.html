@@ -152,7 +152,7 @@
 
   <div class="cards">
     <div class="card"><div class="card-label">Meta do mês</div><div class="card-val c-purple" id="c-meta">R$0</div></div>
-    <div class="card"><div class="card-label">Alcançado</div><div class="card-val c-blue" id="c-alc">R$0</div><div class="card-sub" id="c-alc-sub"></div></div>
+    <div class="card" id="card-total" style="cursor:pointer" title="Clique para editar o total do mês"><div class="card-label">Total do mês <span style="font-size:9px;color:var(--text4)">✏️</span></div><div class="card-val c-blue" id="c-alc">R$0</div><div class="card-sub" id="c-alc-sub"></div></div>
     <div class="card"><div class="card-label">% da meta</div><div class="card-val c-green" id="c-pct">0%</div><div class="card-sub" id="c-pct-sub"></div></div>
     <div class="card"><div class="card-label">Dias úteis</div><div class="card-val c-amber" id="c-dias">0/0</div><div class="card-sub" id="c-dias-sub"></div></div>
   </div>
@@ -204,6 +204,18 @@
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
       <button class="btn-danger" id="zero-month-btn">Zerar mês atual</button>
       <button class="btn-danger" id="zero-btn">Zerar tudo</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TOTAL MÊS -->
+<div class="modal-bg" id="total-modal">
+  <div class="modal">
+    <h3 id="total-modal-title">Total do mês</h3>
+    <input type="number" id="total-modal-input" placeholder="Valor total (R$)" min="0"/>
+    <div class="modal-btns">
+      <button class="mbtn-cancel" id="total-modal-cancel">Cancelar</button>
+      <button class="mbtn-save" id="total-modal-save">Salvar</button>
     </div>
   </div>
 </div>
@@ -631,9 +643,22 @@ function renderHistChart() {
   }
 
   const colors = data.map((v,i)=>{
-    if (histTab==='months' && i===now.getMonth() && histYear===now.getFullYear()) return '#3ab870';
-    if (histTab==='weeks' && histYear===now.getFullYear() && histWeekMonth===now.getMonth()) return '#9d7df0';
-    return v>0 ? '#5c2fc2' : '#131528';
+    if (histTab==='months') {
+      const isCurrMonth = i===now.getMonth() && histYear===now.getFullYear();
+      if (isCurrMonth) return '#7040e8'; // roxo = mês atual
+      const meta = getMeta(histYear, i);
+      if (v <= 0) return '#131528'; // sem dados
+      return v >= meta ? '#3ab870' : '#d06060'; // verde = bateu, vermelho = não bateu
+    }
+    if (histTab==='weeks') {
+      const isCurrMonth = histYear===now.getFullYear() && histWeekMonth===now.getMonth();
+      if (isCurrMonth) return '#7040e8';
+      return v > 0 ? '#5c2fc2' : '#131528';
+    }
+    // anos
+    const isCurrYear = parseInt(labels[i]) === now.getFullYear();
+    if (isCurrYear) return '#7040e8';
+    return v > 0 ? '#5c2fc2' : '#131528';
   });
 
   document.getElementById('hist-scope-label').textContent = scopeLabel;
@@ -709,7 +734,40 @@ document.getElementById('meta-btn').addEventListener('click',()=>{
   setMeta(S.viewYear,S.viewMonth,v);
   scheduleSave(); render();
 });
-document.getElementById('zero-month-btn').addEventListener('click',()=>{
+// Card Total do mês — clique para editar
+document.getElementById('card-total').addEventListener('click', ()=>{
+  const {viewYear:y, viewMonth:m} = S;
+  const total = Object.keys(S.data)
+    .filter(k=>k.startsWith(`${y}-${String(m).padStart(2,'0')}-`))
+    .reduce((s,k)=>s+(S.data[k]||0), 0);
+  document.getElementById('total-modal-title').textContent = `Total — ${MPT[m]} ${y}`;
+  document.getElementById('total-modal-input').value = total > 0 ? total : '';
+  document.getElementById('total-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('total-modal-input').focus(), 50);
+});
+document.getElementById('total-modal-cancel').addEventListener('click', ()=>{
+  document.getElementById('total-modal').classList.remove('open');
+});
+document.getElementById('total-modal').addEventListener('click', e=>{
+  if (e.target===e.currentTarget) document.getElementById('total-modal').classList.remove('open');
+});
+document.getElementById('total-modal-save').addEventListener('click', ()=>{
+  const raw = document.getElementById('total-modal-input').value.trim();
+  if (raw === '') { document.getElementById('total-modal').classList.remove('open'); return; }
+  const novoTotal = parseFloat(raw) || 0;
+  const {viewYear:y, viewMonth:m} = S;
+  // Limpa os dias do mês e coloca tudo no dia 1
+  for (let d=1; d<=dim(y,m); d++) delete S.data[dayKey(y,m,d)];
+  if (novoTotal > 0) setDay(y, m, 1, novoTotal);
+  document.getElementById('total-modal').classList.remove('open');
+  scheduleSave(); render();
+});
+document.getElementById('total-modal-input').addEventListener('keydown', e=>{
+  if (e.key==='Enter') document.getElementById('total-modal-save').click();
+  if (e.key==='Escape') document.getElementById('total-modal').classList.remove('open');
+});
+
+
   const {viewYear:y, viewMonth:m} = S;
   const label = `${MPT[m]} ${y}`;
   if (confirm(`Zerar todos os dias de ${label}?`)) {
